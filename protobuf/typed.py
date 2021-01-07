@@ -1,3 +1,23 @@
+TYPES = {
+    'double': float,
+    'float': float,
+    'int': int,
+    'int32': int,
+    'int64': int,
+    'uint32': int,
+    'uint64': int,
+    'sint32': int,
+    'sint64': int,
+    'fixed32': int,
+    'fixed64': int,
+    'sfixed32': int,
+    'sfixed64': int,
+    'bool': bool,
+    'string': str,
+    'str': str
+}
+
+
 class Descriptor:
     def __init__(self, name=None):
         self.name = name
@@ -11,32 +31,9 @@ class Typed(Descriptor):
 
     def __set__(self, instance, value):
         if not isinstance(value, self.ty):
-            raise TypeError(f'Expected {self.name} is {self.ty}')
+            raise TypeError(f'Expected {self.name} is {self.ty} but was {type(value)}')
         super().__set__(instance, value)
 
 
-class Integer(Typed):
-    ty = int
-
-
-class Float(Typed):
-    ty = float
-
-
-class String(Typed):
-    ty = str
-
-
-class Bool(Typed):
-    ty = bool
-
-
 def get_type(ty):
-    if ty == int:
-        return Integer()
-    if ty == float:
-        return Float()
-    if ty == str:
-        return String()
-    if ty == bool:
-        return Bool()
+    return type(ty.__name__, (Typed, ), {'ty': TYPES[ty.__name__]})()

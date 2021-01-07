@@ -14,13 +14,13 @@ class StructMeta(type):
     def __prepare__(cls, name, bases):
         return OrderedDict()
 
-    def __new__(cls, name, bases, clsdict):
+    def __new__(mcs, name, bases, clsdict):
         fields = [key for key, val in clsdict.items()
                   if isinstance(val, Descriptor)]
         for field in fields:
             clsdict[field].name = field
 
-        clsobj = super().__new__(cls, name, bases, dict(clsdict))
+        clsobj = super().__new__(mcs, name, bases, dict(clsdict))
         sig = make_signature(fields)
         setattr(clsobj, '__signature__', sig)
         return clsobj
@@ -33,3 +33,9 @@ class Structure(metaclass=StructMeta):
         bound = self.__signature__.bind(*args, **kwargs)
         for name, val in bound.arguments.items():
             setattr(self, name, val)
+
+    def from_file(self):
+        pass
+
+    def to_file(self):
+        pass
