@@ -1,0 +1,4 @@
+message A
+{
+  required str A = 1;
+}

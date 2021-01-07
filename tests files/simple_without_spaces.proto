@@ -1,0 +1,3 @@
+message A{
+  required int32 A=1;
+}

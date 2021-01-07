@@ -1,0 +1,4 @@
+message A
+{
+  bar int32 A = 1;
+}

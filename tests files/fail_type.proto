@@ -1,0 +1,9 @@
+message A
+{
+  required S A = 1;
+
+  enum S
+  {
+    a = 0;
+  }
+}

@@ -1,0 +1,5 @@
+message A
+{
+  required int32 A = 1;
+  required string B = 2;
+}

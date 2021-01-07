@@ -1,0 +1,8 @@
+message A
+{
+  required int32 A = 1;
+
+  enum B{
+    a = 1 - ;
+  }
+}

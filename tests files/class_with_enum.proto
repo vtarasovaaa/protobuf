@@ -1,0 +1,13 @@
+message A
+{
+  required int32 A = 1;
+  required bool B = 2;
+  required string C = 3;
+
+  enum D {
+    a = 0;
+    b = 1;
+  }
+
+  required D d = 4;
+}

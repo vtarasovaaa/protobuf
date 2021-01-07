@@ -1,0 +1,4 @@
+message A
+{
+  required int3 A = 1;
+}

@@ -1,0 +1,19 @@
+message A
+{
+  required int32 A = 1;
+  required bool B = 2;
+  required string C = 3;
+
+  message D {
+    required int32 a = 1;
+    required string b = 2;
+
+    message E {
+      required fixed32 x = 1;
+    }
+
+    required E e = 3;
+  }
+
+  required D d = 4;
+}

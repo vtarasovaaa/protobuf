@@ -1,0 +1,4 @@
+message A d
+{
+  required string A = 1;
+}
