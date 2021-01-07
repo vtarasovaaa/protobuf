@@ -1,6 +1,7 @@
 from enum import Enum
 from protobuf.pb_parser import parse
-from protobuf.Structure import Structure, make_signature
+from protobuf.Structure import Structure
+from protobuf.typed import get_type
 
 
 def _create_class_with_structure(message):
@@ -12,14 +13,16 @@ def _create_class_with_structure(message):
             d[prop.name] = prop.value
         attributes[enum.name] = Enum(enum.name, d)
 
-    for mes in message.classes:
-        attributes[mes.name] = _create_class_with_structure(mes)
+    for cl in message.classes:
+        attributes[cl.name] = _create_class_with_structure(cl)
 
-    attributes['__signature__'] = make_signature(message.properties)
+    for pr in message.properties:
+        attributes[pr.name] = get_type(pr.type)
 
     result = type(message.name, (Structure, ), attributes)
     return result
 
 
 def create(filename):
-    return _create_class_with_structure(parse(filename))
+    a = parse(filename)
+    return _create_class_with_structure(a)
