@@ -1,7 +1,6 @@
 TYPES = {
     'double': float,
     'float': float,
-    'int': int,
     'int32': int,
     'int64': int,
     'uint32': int,
@@ -13,8 +12,24 @@ TYPES = {
     'sfixed32': int,
     'sfixed64': int,
     'bool': bool,
-    'string': str,
-    'str': str
+    'string': str
+}
+
+WIRE_TYPES = {
+    'double': 1,
+    'float': 5,
+    'int32': 0,
+    'int64': 0,
+    'uint32': 0,
+    'uint64': 0,
+    'sint32': 0,
+    'sint64': 0,
+    'fixed32': 5,
+    'fixed64': 1,
+    'sfixed32': 5,
+    'sfixed64': 1,
+    'bool': 0,
+    'string': 2
 }
 
 
@@ -30,10 +45,10 @@ class Typed(Descriptor):
     ty = object
 
     def __set__(self, instance, value):
-        if not isinstance(value, self.ty):
+        if not isinstance(value, self.ty) and value is not None:  # TODO: None?
             raise TypeError(f'Expected {self.name} is {self.ty} but was {type(value)}')
         super().__set__(instance, value)
 
 
-def get_type(ty):
-    return type(ty.__name__, (Typed, ), {'ty': TYPES[ty.__name__]})()
+def get_type(ty):  # TODO: название
+    return type(TYPES[ty].__name__, (Typed,), {'ty': TYPES[ty]})()

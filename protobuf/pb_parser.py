@@ -1,8 +1,9 @@
 from protobuf.message import Message
 from protobuf.property import Property
-from protobuf.typed import TYPES
+from protobuf.typed import TYPES, WIRE_TYPES
 
-
+# TODO: в целом почистить надо код
+# TODO: добавить обработку первой строки с синтаксисом
 PRIORITIES = {
     'required',
     'optional',
@@ -38,6 +39,7 @@ def parse(filename):
                     message.classes.append(Message(line.split()[1], message))
                     message = message.classes[-1]
                 TYPES[message.name] = type(message.name, (), {})
+                WIRE_TYPES[message.name] = 2
             elif string[0] == 'enum':
                 if message is None:
                     message = Message(line.split()[1], None, True)
@@ -46,6 +48,7 @@ def parse(filename):
                         Message(line.split()[1], message, True))
                     message = message.enums[-1]
                 TYPES[message.name] = type(message.name, (), {})
+                WIRE_TYPES[message.name] = 0
             else:
                 raise SyntaxError(f'unexpected string: {line}')
         if line[-1] == ';':
@@ -58,7 +61,7 @@ def parse(filename):
                     raise SyntaxError(f'Incorrect string {line}')
                 if len(default[1].split(']')) != 2:
                     raise SyntaxError(f'Incorrect string {line}')
-                default = line.split('[')[1].split('=')[1].split(']')[0]
+                default = line.split('[')[1].split('=')[1].split(']')[0].strip()  # TODO: для строк сплитить по кавычкам
                 line = line.split('[')[0]
             else:
                 raise SyntaxError(f'Incorrect string {line}')
@@ -74,13 +77,23 @@ def parse(filename):
                     raise SyntaxError(f'unexpected string: {line}')
                 if words[0] not in PRIORITIES:
                     raise SyntaxError(f'unexpected string: {line}')
+
                 prop = Property(
-                    words[2], words[3], default, TYPES[words[1]], words[0])
+                    words[2], int(words[3]), default, words[1], words[0], WIRE_TYPES[words[1]])
             else:
                 if len(words) != 2:
                     raise SyntaxError(f'unexpected string: {line}')
                 prop = Property(words[0], words[1])
+
+            if prop.priority == 'optional':
+                message.optional_properties.append(prop)
+            elif prop.priority == 'required':
+                if prop.default is None:
+                    message.required_properties.append(prop)
+                else:
+                    message.req_def_properties.append(prop)
             message.properties.append(prop)
+
         if line[-1] == '}':
             if message.parent is not None:
                 message = message.parent
