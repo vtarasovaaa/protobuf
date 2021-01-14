@@ -61,7 +61,7 @@ def parse(filename):
                     raise SyntaxError(f'Incorrect string {line}')
                 if len(default[1].split(']')) != 2:
                     raise SyntaxError(f'Incorrect string {line}')
-                default = line.split('[')[1].split('=')[1].split(']')[0].strip()  # TODO: для строк сплитить по кавычкам
+                default = line.split('[')[1].split('=')[1].split(']')[0].strip()
                 line = line.split('[')[0]
             else:
                 raise SyntaxError(f'Incorrect string {line}')
@@ -78,12 +78,20 @@ def parse(filename):
                 if words[0] not in PRIORITIES:
                     raise SyntaxError(f'unexpected string: {line}')
 
+                if words[1] == 'string' and default is not None:
+                    if (default[0] == "'" or default[0] == '"'
+                            and default[-1] == "'" or default[-1] == '"'):
+                        default = default[1:-1]
+                    else:
+                        raise Exception('Something went wrong')
+                field_number = int(words[3])
                 prop = Property(
-                    words[2], int(words[3]), default, words[1], words[0], WIRE_TYPES[words[1]])
+                    words[2], field_number, default, words[1], words[0], WIRE_TYPES[words[1]])
             else:
                 if len(words) != 2:
                     raise SyntaxError(f'unexpected string: {line}')
-                prop = Property(words[0], words[1])
+                field_number = int(words[1])
+                prop = Property(words[0], field_number)
 
             if prop.priority == 'optional':
                 message.optional_properties.append(prop)
@@ -93,6 +101,7 @@ def parse(filename):
                 else:
                     message.req_def_properties.append(prop)
             message.properties.append(prop)
+            message.properties_dict[field_number] = prop
 
         if line[-1] == '}':
             if message.parent is not None:

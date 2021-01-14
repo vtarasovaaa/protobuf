@@ -43,23 +43,22 @@ class Structure(metaclass=StructMeta):
 
     def __init__(self, *args, **kwargs):
         bound = self.__signature__.bind(*args, **kwargs)
-        # TODO: мб разделить на два цикла, сначала все дефолтные установить, потом args
         for n, v in bound.signature.parameters.items():
             if v.default is not None and not isinstance(v.default, type):
                 setattr(self, n, v.default)
         for name, val in bound.arguments.items():
             setattr(self, name, val)
 
-    def _to_bytes(self):
+    def to_bytes(self):
         _bytes = []
         for prop in self.__descriptor__.properties:
             a = getattr(self, prop.name)
             if isinstance(a, Descriptor):
                 continue
+
             wire_type = prop.wire_type
             field_number = prop.value
-            byte = (field_number << 3) | wire_type
-            _bytes.append(bytes([byte]))
+            _bytes.append(bytes([(field_number << 3) | wire_type]))
 
             if wire_type == 0:
                 if prop.type == 'sint32' or prop.type == 'sint64':
@@ -75,7 +74,7 @@ class Structure(metaclass=StructMeta):
                     string = a.encode('utf-8')
                     b = length + string
                 else:
-                    attr = a._to_bytes()
+                    attr = a.to_bytes()
                     length = _varint_encode(len(attr))
                     b = length + attr
             elif wire_type == 3:
@@ -91,15 +90,27 @@ class Structure(metaclass=StructMeta):
 
     def to_file(self, filename):
         with open(filename, 'wb') as f:
-            f.write(self._to_bytes())
+            f.write(self.to_bytes())
 
     @classmethod
     def from_file(cls, filename):
         with open(filename, 'rb') as f:
             data = f.read()
             a = cls()
-            for e in data:
-                wire_type, field_number = _get_type_and_f_num(e)
+            for e in range(len(data)):
+                wire_type, field_number = _get_type_and_f_num(data[e])
+                if wire_type == 1:
+                    pass
+                elif wire_type == 2:
+                    pass
+                elif wire_type == 3:
+                    pass
+                elif wire_type == 4:
+                    pass
+                elif wire_type == 5:
+                    pass
+                else:
+                    raise Exception('Something went wrong')
         return
 
         # TODO: + (u)int.. -- кодируем как выше
@@ -139,6 +150,4 @@ def _varint_decode(num):
 
 
 def _get_type_and_f_num(b):
-    wire_type = b % 8
-    field_number = b // 8
-    return wire_type, field_number
+    return b % 8, b // 8  # wire_type, field_number
