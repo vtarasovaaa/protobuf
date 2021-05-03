@@ -45,10 +45,10 @@ class Typed(Descriptor):
     ty = object
 
     def __set__(self, instance, value):
-        if not isinstance(value, self.ty) and value is not None:  # TODO: None?
+        if not isinstance(value, self.ty) and value is not None:
             raise TypeError(f'Expected {self.name} is {self.ty} but was {type(value)}')
         super().__set__(instance, value)
 
 
-def get_type(ty):  # TODO: название
+def get_type(ty):
     return type(TYPES[ty].__name__, (Typed,), {'ty': TYPES[ty]})()

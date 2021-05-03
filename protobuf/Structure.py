@@ -42,7 +42,11 @@ class Structure(metaclass=StructMeta):
     __descriptor__ = None
 
     def __init__(self, *args, **kwargs):
-        bound = self.__signature__.bind(*args, **kwargs)
+        if len(kwargs) == 1 and '__cr__' in kwargs:
+            bound = self.__signature__.bind(*args, **kwargs['__cr__'])
+        else:
+            bound = self.__signature__.bind(*args, **kwargs)
+
         for n, v in bound.signature.parameters.items():
             if v.default is not None and not isinstance(v.default, type):
                 setattr(self, n, v.default)
@@ -52,40 +56,41 @@ class Structure(metaclass=StructMeta):
     def to_bytes(self):
         _bytes = []
         for prop in self.__descriptor__.properties:
-            a = getattr(self, prop.name)
-            if isinstance(a, Descriptor):
+            attr = getattr(self, prop.name)
+            if isinstance(attr, Descriptor):
                 continue
 
             wire_type = prop.wire_type
             field_number = prop.value
             _bytes.append(bytes([(field_number << 3) | wire_type]))
+            encode_attr = 0
 
             if wire_type == 0:
                 if prop.type == 'sint32' or prop.type == 'sint64':
-                    a = zigzag_encode(a)
+                    attr = zigzag_encode(attr)
                 if isinstance(TYPES[prop.type], EnumMeta):
-                    a = a.value
-                b = _varint_encode(a)
+                    attr = attr.value
+                encode_attr = _varint_encode(attr)
             elif wire_type == 1:
-                b = struct.pack('<d', a)  # 64 bits in little-endian byte order
+                encode_attr = struct.pack('<d', attr)  # 64 bits in little-endian byte order
             elif wire_type == 2:
                 if prop.type == 'string':
-                    length = _varint_encode(len(a))
-                    string = a.encode('utf-8')
-                    b = length + string
-                else:
-                    attr = a.to_bytes()
                     length = _varint_encode(len(attr))
-                    b = length + attr
+                    string = attr.encode('utf-8')
+                    encode_attr = length + string
+                else:
+                    attr = attr.to_bytes()
+                    length = _varint_encode(len(attr))
+                    encode_attr = length + attr
             elif wire_type == 3:
                 pass
             elif wire_type == 4:
                 pass
             elif wire_type == 5:
-                b = struct.pack('<f', a)  # 32 bits in little-endian byte order
+                encode_attr = struct.pack('<f', attr)  # 32 bits in little-endian byte order
             else:
                 raise Exception('Unknown type')
-            _bytes.append(b)
+            _bytes.append(encode_attr)
         return b''.join(_bytes)
 
     def to_file(self, filename):
@@ -93,37 +98,52 @@ class Structure(metaclass=StructMeta):
             f.write(self.to_bytes())
 
     @classmethod
+    def from_bytes(cls, data):
+        properties = {}
+        k = 0
+        while k < len(data):
+            wire_type, field_number = _get_type_and_f_num(data[k])
+            prop = cls.__descriptor__.properties_dict[field_number]
+            k += 1
+            if wire_type == 0:
+                num, k = _varint_decode(data, k)
+                if prop.type == 'sint32' or prop.type == 'sint64':
+                    num = zigzag_decode(num)
+                if prop.type == 'bool':
+                    num = bool(num)
+                if isinstance(TYPES[prop.type], EnumMeta):
+                    num = cls.__dict__[prop.type](num)
+                properties[prop.name] = num
+            elif wire_type == 1:
+                num = struct.unpack('<d', data[k:k+8])
+                k += 8
+                properties[prop.name] = num[0]
+            elif wire_type == 2:
+                length, k = _varint_decode(data, k)
+                if prop.type == 'string':
+                    value = data[k:k + length].decode('utf-8')
+                else:
+                    sub_class = cls.__dict__[prop.type]
+                    value = sub_class.from_bytes(data[k:k+length])
+                k += length
+                properties[prop.name] = value
+            elif wire_type == 3:
+                pass
+            elif wire_type == 4:
+                pass
+            elif wire_type == 5:
+                num = struct.unpack('<f', data[k:k+4])
+                k += 4
+                properties[prop.name] = num[0]
+            else:
+                raise Exception('Something went wrong')
+        return cls(__cr__=properties)
+
+    @classmethod
     def from_file(cls, filename):
         with open(filename, 'rb') as f:
             data = f.read()
-            a = cls()
-            for e in range(len(data)):
-                wire_type, field_number = _get_type_and_f_num(data[e])
-                if wire_type == 1:
-                    pass
-                elif wire_type == 2:
-                    pass
-                elif wire_type == 3:
-                    pass
-                elif wire_type == 4:
-                    pass
-                elif wire_type == 5:
-                    pass
-                else:
-                    raise Exception('Something went wrong')
-        return
-
-        # TODO: + (u)int.. -- кодируем как выше
-        # TODO: + sint.. -- ZigZag а потом как выше
-        # TODO: + float и double -- struct.pack('<f, value')
-        # TODO: + bool -- как выше
-        # TODO: + enum -- как выше
-        # TODO: + string -- вначале записать длину строки как выше (varint) потом в utf-8 записать саму строку
-        # TODO: + messages -- длина(кол-во байт) - затем все поля со значениями
-
-
-def _from_bytes(data):
-    pass
+            return cls.from_bytes(data)
 
 
 def zigzag_decode(i):
@@ -145,8 +165,22 @@ def _varint_encode(num):
         _bytes.append(1 << 7 | b)
 
 
-def _varint_decode(num):
-    pass
+def _varint_decode(data, k):
+    result = []
+    while True:
+        num = data[k]
+        if num < 128:
+            result.append(num)
+            result.reverse()
+            ans = 0
+            for a in result[:-1]:
+                ans += a
+                ans = ans << 7
+            ans += result[-1]
+            k += 1
+            return ans, k
+        result.append(num % 128)
+        k += 1
 
 
 def _get_type_and_f_num(b):

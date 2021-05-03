@@ -2,6 +2,7 @@ from enum import Enum, EnumMeta
 from protobuf.pb_parser import parse
 from protobuf.Structure import Structure
 from protobuf.typed import get_type, TYPES
+from protobuf.ProtobufSyntaxError import ProtobufSyntaxError
 
 
 def _create_class_with_structure(message):
@@ -27,12 +28,10 @@ def _create_class_with_structure(message):
                 else:
                     pr.default = attributes[pr.name].ty(pr.default)
             except Exception:
-                raise SyntaxError(f"wrong {pr.name}'s default value")
+                raise ProtobufSyntaxError(f"wrong {pr.name}'s default value")
 
-    result = type(message.name, (Structure,), attributes)
-    return result
+    return type(message.name, (Structure,), attributes)
 
 
 def create(filename):
-    a = parse(filename)  # TODO: не забыть вернуть на место
-    return _create_class_with_structure(a)
+    return _create_class_with_structure(parse(filename))
